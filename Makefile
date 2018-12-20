@@ -3,7 +3,6 @@ BUILD_DIR := $(shell pwd)
 VERBOSE = 0
 
 obj-m := nvpkt.o
-nvpkt-objs := packet.o
 
 ccflags-y :=
 

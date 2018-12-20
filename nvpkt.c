@@ -8,8 +8,10 @@
 #include <linux/netdevice.h>
 #include <net/net_namespace.h>
 #include <linux/miscdevice.h>
+#include <linux/blkdev.h>
 
 #include "nvme.h"
+#include "nvpkt.h"
 
 #define NVPKT_VERSION	"0.0.0"
 
@@ -40,11 +42,86 @@ struct nvpkt {
 static struct nvpkt nvpkt;
 
 
-static int nvpkt_open(struct inode *inode, struct file *filp) {
+static long nvpkt_ioctl_txpkt(unsigned long arg)
+{
+	int ret;
+	struct nvpkt_xmit npr;
+
+	ret = copy_from_user(&npr, (void __user *)arg, sizeof(npr));
+	if (ret) {
+		pr_err("%s: failed to copy_from_user\n", __func__);
+		return ret;
+	}
+
 	return 0;
 }
 
-static int nvpkt_release(struct inode *inode, struct file *filp) {
+static long nvpkt_ioctl_submit_io(unsigned long arg)
+{
+	/* simplified nvme_submit_io() and nvme_submit_user_cmd() */
+
+	int ret;
+	unsigned length;
+	struct nvme_user_io io;
+	struct nvme_command c;
+	struct nvme_ns *ns = nvpkt.disk->private_data;
+	struct request *req;
+	struct bio *bio = NULL;
+
+	if (copy_from_user(&io, (void __user *)arg, sizeof(io)))
+		return -EINVAL;
+	if (io.flags)
+		return -EINVAL;
+
+	length = (io.nblocks + 1) << ns->lba_shift;
+
+	memset(&c, 0, sizeof(c));
+	c.rw.opcode = io.opcode;
+	c.rw.nsid = cpu_to_le32(ns->head->ns_id);
+	c.rw.slba = cpu_to_le64(io.slba);
+	c.rw.length = cpu_to_le16(io.nblocks);
+	c.rw.control = cpu_to_le32(io.control);
+	c.rw.dsmgmt = cpu_to_le32(io.dsmgmt);
+	c.rw.reftag = cpu_to_le32(io.reftag);
+	c.rw.apptag = cpu_to_le16(io.apptag);
+	c.rw.appmask = cpu_to_le16(io.appmask);
+	
+
+	req = nvme_alloc_request(ns->queue, &c, 0, NVME_QID_ANY);
+	if (IS_ERR(req))
+		return PTR_ERR(req);
+	
+	req->timeout = ADMIN_TIMEOUT;
+	nvme_req(req)->flags |= NVME_REQ_USERCMD;
+
+	ret = blk_rq_map_user(ns->queue, req, NULL,
+			      (void __user *)(uintptr_t)io.addr, length,
+			      GFP_KERNEL);
+	if (ret)
+		goto out;
+
+	bio = req->bio;
+	bio->bi_disk = ns->disk;
+	
+	blk_execute_rq(req->q, ns->disk, req, 0);
+	if (nvme_req(req)->flags & NVME_REQ_CANCELLED)
+		ret = -EINTR;
+	else
+		ret = nvme_req(req)->status;
+
+	blk_rq_unmap_user(bio);
+out:
+	blk_mq_free_request(req);
+	return ret;
+}
+
+static int nvpkt_open(struct inode *inode, struct file *filp)
+{
+	return 0;
+}
+
+static int nvpkt_release(struct inode *inode, struct file *filp)
+{
 	return 0;
 }
 
@@ -60,8 +137,22 @@ static ssize_t nvpkt_write(struct file *filp, const char __user *buf,
 	return 0;
 }
 
-static long nvpkt_ioctl(struct file *filp, unsigned intcmd,  unsigned long arg)
+static long nvpkt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
+	switch(cmd) {
+		
+
+	case NVPKT_IOCTL_TXPKT:
+		return nvpkt_ioctl_txpkt(arg);
+
+	case NVPKT_IOCTL_SUBMIT_IO:
+		return nvpkt_ioctl_submit_io(arg);
+			
+	default:
+		pr_err("invalid nvpkt ioctl command %d\n", cmd);
+		return -EINVAL;
+	}
+
 	return 0;
 }
 
@@ -72,7 +163,6 @@ static struct file_operations nvpkt_fops = {
 	.read		= nvpkt_read,
 	.write		= nvpkt_write,
 	.unlocked_ioctl	= nvpkt_ioctl,
-	.compat_ioctl	= nvpkt_ioctl,
 };
 
 
