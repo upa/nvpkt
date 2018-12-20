@@ -17,7 +17,7 @@
 int main(int argc, char **argv)
 {
 	int ret;
-	char buf[2048];
+	char buf[4096];
 	struct ether_header *eth;
 	struct ip *ip;
 	struct udphdr *udp;

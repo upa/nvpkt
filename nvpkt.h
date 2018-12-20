@@ -19,7 +19,7 @@
 
 /* xmit a packet from slba */
 struct nvpkt_xmit {
-	ssize_t len;
+	size_t len;
 	__u64	slba;
 };
 

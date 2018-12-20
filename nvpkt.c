@@ -9,6 +9,7 @@
 #include <net/net_namespace.h>
 #include <linux/miscdevice.h>
 #include <linux/blkdev.h>
+#include <linux/scatterlist.h>
 
 #include "nvme.h"
 #include "nvpkt.h"
@@ -42,10 +43,71 @@ struct nvpkt {
 static struct nvpkt nvpkt;
 
 
+/*
+ * skb_from_sgvec - create sk_buff from sgvec
+ * @pskb*	skb mapped from the sgl
+ * @sgl:	scatterlist contains physical pages
+ * @nents:	number of entries of the sgl
+ * @length:	buffer in the sgl
+ *
+ * Description:
+ *   Create sk_buff from scatterlist. each entry of the scatterlist
+ *   is mapped as frags.
+ * 
+ */
+static int skb_from_sgvec(struct sk_buff **pskb, struct scatterlist *sgl, 
+			       unsigned int nents, size_t length)
+{
+	int n = 0;
+	unsigned int offset = 0;
+	struct sg_mapping_iter miter;
+	struct sk_buff *skb = NULL;
+
+	sg_miter_start(&miter, sgl, nents, SG_MITER_ATOMIC | SG_MITER_TO_SG);
+
+	while((offset < length) && sg_miter_next(&miter)) {
+		unsigned int len;
+
+		len = min(miter.length, length - offset);
+
+		if (!skb) {
+			/* the first iteration */
+			skb = build_skb(miter.addr, len);
+			if (!skb) {
+				pr_err("failed to build skb from sgl\n");
+				return -ENOMEM;
+			}
+		} else {
+			/* second and later iteration */
+			skb_fill_page_desc(skb, n, miter.page,
+					   miter.__offset, len);
+		}
+
+		offset += len;
+	}
+
+	sg_miter_stop(&miter);
+	
+	*pskb = skb;
+
+	return 0;
+}
+
+
 static long nvpkt_ioctl_txpkt(unsigned long arg)
 {
 	int ret;
 	struct nvpkt_xmit npr;
+	struct sk_buff *skb;
+	struct scatterlist *sgl;
+	unsigned int nents;
+	unsigned nblocks;
+	struct nvme_ns *ns = nvpkt.disk->private_data;
+	struct nvme_command c;
+	struct request *req;
+	struct bio *bio = NULL;
+
+	pr_info("adsf\n");
 
 	ret = copy_from_user(&npr, (void __user *)arg, sizeof(npr));
 	if (ret) {
@@ -53,7 +115,67 @@ static long nvpkt_ioctl_txpkt(unsigned long arg)
 		return ret;
 	}
 
-	return 0;
+	/* allocate scatterlist and map it into skbuff */
+	sgl = sgl_alloc(npr.len, GFP_KERNEL, &nents);
+	if (!sgl) {
+		pr_err("%s: failed to allocate scatterlist\n", __func__);
+		return -ENOMEM;
+	}
+
+	pr_info("adsf\n");
+
+	ret = skb_from_sgvec(&skb, sgl, nents, npr.len);
+	if (ret) {
+		pr_err("%s: failed to map scatterlist into skb\n", __func__);
+		return ret;
+	}
+
+	pr_info("adsf\n");
+
+	/* allocate READ nvme request */
+	nblocks = npr.len >> ns->lba_shift;
+	nblocks = nblocks ? nblocks : 1;
+
+	memset(&c, 0, sizeof(c));
+	c.rw.opcode = nvme_cmd_read;
+	c.rw.nsid = cpu_to_le32(ns->head->ns_id);
+	c.rw.slba = cpu_to_le64(npr.slba);
+	c.rw.length = nblocks;
+
+	pr_info("adsf\n");
+
+	req = nvme_alloc_request(ns->queue, &c, 0, NVME_QID_ANY);
+	if (IS_ERR(req)) {
+		pr_err("failed to allocate struct request\n");
+		return PTR_ERR(req);
+	}
+
+	pr_info("adsf\n");
+
+	req->timeout = ADMIN_TIMEOUT;
+	ret = blk_rq_map_sg(ns->queue, req, sgl);
+	if (ret) {
+		pr_err("%s: failed to map sgl to request\n", __func__);
+		goto out;
+	}
+	pr_info("qwer\n");
+
+	bio = req->bio;
+	bio->bi_disk = ns->disk;
+
+	pr_info("adsf22\n");
+
+	blk_execute_rq(req->q, ns->disk, req, 0);
+	if (nvme_req(req)->flags & NVME_REQ_CANCELLED)
+		ret = -EINTR;
+	else
+		ret = nvme_req(req)->status;
+
+	blk_rq_unmap_user(bio);
+out:
+	blk_mq_free_request(req);
+	/* XXX: Free SKB and Scatterlist here!! Memory Leak!! */
+	return ret;
 }
 
 static long nvpkt_ioctl_submit_io(unsigned long arg)
@@ -140,7 +262,6 @@ static ssize_t nvpkt_write(struct file *filp, const char __user *buf,
 static long nvpkt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	switch(cmd) {
-		
 
 	case NVPKT_IOCTL_TXPKT:
 		return nvpkt_ioctl_txpkt(arg);
@@ -246,7 +367,6 @@ out:
 
 static void __exit nvpkt_exit_module(void)
 {
-	pr_info("%s (%s) unloading...\n", KBUILD_MODNAME, NVPKT_VERSION);
 
 	/* release the nvme device */
 	disk_put_part(nvpkt.part);
@@ -256,6 +376,8 @@ static void __exit nvpkt_exit_module(void)
 
 	/* release the misc device */
 	misc_deregister(&nvpkt.mdev);
+
+	pr_info("%s (%s) unloaded\n", KBUILD_MODNAME, NVPKT_VERSION);
 }
 
 
