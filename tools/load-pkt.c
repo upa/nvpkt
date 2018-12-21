@@ -29,19 +29,19 @@ int main(int argc, char **argv)
 
 
 	eth = (struct ether_header *)buf;
-	eth->ether_dhost[0] = 0x01;
-	eth->ether_dhost[1] = 0x02;
-	eth->ether_dhost[2] = 0x03;		
-	eth->ether_dhost[3] = 0x04;	
-	eth->ether_dhost[4] = 0x05;
-	eth->ether_dhost[5] = 0x06;
+	eth->ether_shost[0] = 0x01;
+	eth->ether_shost[1] = 0x02;
+	eth->ether_shost[2] = 0x03;		
+	eth->ether_shost[3] = 0x04;	
+	eth->ether_shost[4] = 0x05;
+	eth->ether_shost[5] = 0x06;
 
-	eth->ether_shost[0] = 0x0a;
-	eth->ether_shost[1] = 0x0b;
-	eth->ether_shost[2] = 0x0c;		
-	eth->ether_shost[3] = 0x0d;	
-	eth->ether_shost[4] = 0x0e;
-	eth->ether_shost[5] = 0x0f;
+	eth->ether_dhost[0] = 0x7c;
+	eth->ether_dhost[1] = 0xfe;
+	eth->ether_dhost[2] = 0x90;		
+	eth->ether_dhost[3] = 0x0b;	
+	eth->ether_dhost[4] = 0xc6;
+	eth->ether_dhost[5] = 0xad;
 
 	eth->ether_type = htons(ETHERTYPE_IP);
 
@@ -55,14 +55,14 @@ int main(int argc, char **argv)
 	ip->ip_ttl	= 16;
 	ip->ip_p	= IPPROTO_UDP;
 	ip->ip_sum	= 0;
-	ip->ip_dst.s_addr = inet_addr("10.0.0.1");
 	ip->ip_src.s_addr = inet_addr("10.0.0.2");
+	ip->ip_dst.s_addr = inet_addr("10.0.0.1");
 
 
 	udp = (struct udphdr*)(ip + 1);
 	udp->uh_ulen	= htons(len - sizeof(*eth) - sizeof(*ip));
-	udp->uh_dport	= 60000;
-	udp->uh_sport	= 60000;
+	udp->uh_dport	= htons(60000);
+	udp->uh_sport	= htons(60000);
 	udp->uh_sum	= 0;
 
 
