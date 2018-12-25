@@ -3,7 +3,7 @@ INCLUDE := -I../include/
 LDFLAGS :=
 CFLAGS := -g -Wall $(INCLUDE)
 
-PROGNAME = load-pkt xmit-pkt
+PROGNAME = store-pkt xmit-pkt
 
 all: $(PROGNAME)
 

@@ -1,4 +1,4 @@
-/* load-pkt.c */
+/* store-pkt.c */
 
 #include <stdio.h>
 #include <string.h>
