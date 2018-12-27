@@ -2,3 +2,4 @@ core
 store-pkt
 load-and-xmit
 dump-nvme
+bench-nvme
