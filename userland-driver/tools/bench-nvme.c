@@ -238,8 +238,8 @@ void * bench_start(void *arg)
 
 	lba = next_lba(th->slba, block_end, nblocks);
 
-	printf("start benchmark on queue %d, nblocks=%lu, batch=%d\n",
-	       qid, nblocks, p.batch);
+	printf("start on queue %d, slba=%#lx, nblocks=%lu, batch=%d\n",
+	       qid, lba, nblocks, p.batch);
 
 	gettimeofday(&th->start, NULL);
 	while (!caught_signal) {
@@ -249,7 +249,6 @@ void * bench_start(void *arg)
 			       b, qid, lba, nblocks);
 			iod[b] = bench(p.mode, qid, bufs[b], lba, nblocks);
 			lba = next_lba(lba, block_end, nblocks);
-
 		}
 
 		for (b = 0; b < p.batch; b++) {
