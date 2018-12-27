@@ -25,18 +25,20 @@ struct body {
 	__u64	slba;
 	int	count;
 	int	usleep;
+	int	batch_size;
 };
 
 struct body body;
 
 void usage() {
 	printf("usage:\n"
-	       "    -i NMNAME	netmap port name to xmit packets\n"
-	       "    -s SLBA	start logical address block\n"
-	       "    -n nblocks	number of logical blocks read\n"
-	       "    -p PCIbus   pci bus number of nvme in which packet storead"
-	       "    -c count    number of loop\n"
-	       "    -u usleep   usleep between tx packets\n"
+	       "    -i NMNAME	 netmap port name to xmit packets\n"
+	       "    -s SLBA	 start logical address block\n"
+	       "    -n nblocks	 number of logical blocks read\n"
+	       "    -p PCIbus    pci num of nvme in which packet storead"
+	       "    -c count     number of loop\n"
+	       "    -u usleep    usleep between tx packets\n"
+	       "    -B batchsize batch size"
 	       "\n");
 }
 
@@ -112,6 +114,7 @@ int main(int argc, char **argv)
 
 	const unvme_ns_t *unvme;
 
+	body.batch_size = 1;
 
 	while ((ch = getopt(argc, argv, "i:s:n:p:c:u:b")) != -1) {
 		switch (ch) {
@@ -147,6 +150,10 @@ int main(int argc, char **argv)
 			body.usleep = atoi(optarg);
 			break;
 
+		case 'B':
+			body.batch_size = atoi(optarg);
+			break;
+
 		default:
 			usage();
 			return -1;
@@ -167,7 +174,7 @@ int main(int argc, char **argv)
 	}
 	
 	/* open nvme */
-	printf("%s\n", body.nvme_pci);
+	printf("open %s\n", body.nvme_pci);
 	unvme = unvme_open(body.nvme_pci);
 	if (!unvme) {
 		fprintf(stderr, "failed to open nvme device %s\n",
@@ -176,6 +183,7 @@ int main(int argc, char **argv)
 		goto nvme_out;
 	}
 
+	printf("allocate memory\n");
 	buf = unvme_alloc(unvme, 4096);
 	if (!buf) {
 		fprintf(stderr, "failed to allocate memory\n");
@@ -183,10 +191,12 @@ int main(int argc, char **argv)
 		goto out;
 	}
 
+	printf("ok, start to xmit\n");
+
 	/* xmit pakcet from nvme to nic */
 	for (i = 0; i < body.count; i++) {
 		for (n = 0; n < body.nblocks; n++) {
-			ret = unvme_read(unvme, 0, buf, body.slba + n, 1);
+			ret = unvme_read(unvme, 1, buf, body.slba + n, 1);
 			if (ret < 0) {
 				fprintf(stderr, "failed to unvme_read: %d\n",
 					ret);
@@ -233,8 +243,6 @@ int main(int argc, char **argv)
 			usleep(body.usleep);
 		}
 	}
-
-
 
 free_out:
 	unvme_free(unvme, buf);
