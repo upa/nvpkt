@@ -3,3 +3,6 @@ store-pkt
 load-and-xmit
 dump-nvme
 bench-nvme
+.DS_Store
+.*.swp
+dat/*.dat
