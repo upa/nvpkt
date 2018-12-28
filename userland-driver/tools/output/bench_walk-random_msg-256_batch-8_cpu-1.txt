@@ -1,0 +1,44 @@
+==== Benchmark Configuration ====
+mode:       read
+walk:       random
+size:       256
+batch:      8
+device:     b3:00.0
+ncpus:      1
+time:       30
+=================================
+unvme_do_open b3:00.0/1 (INTEL SSDPEDKE020T7) is ready
+start benchmarking
+start on queue 0, slba=0x73647759, nblocks=1, batch=8
+[INTERIM] 228576.14 iops, 228.58 kiops, 58515492.49 Bps, 55.80 MBps
+[INTERIM] 226531.50 iops, 226.53 kiops, 57992064.51 Bps, 55.31 MBps
+[INTERIM] 224008.66 iops, 224.01 kiops, 57346217.84 Bps, 54.69 MBps
+[INTERIM] 227750.81 iops, 227.75 kiops, 58304207.02 Bps, 55.60 MBps
+[INTERIM] 225902.92 iops, 225.90 kiops, 57831148.74 Bps, 55.15 MBps
+[INTERIM] 228457.87 iops, 228.46 kiops, 58485214.63 Bps, 55.78 MBps
+[INTERIM] 225280.32 iops, 225.28 kiops, 57671761.42 Bps, 55.00 MBps
+[INTERIM] 229272.32 iops, 229.27 kiops, 58693714.30 Bps, 55.97 MBps
+[INTERIM] 227644.73 iops, 227.64 kiops, 58277051.25 Bps, 55.58 MBps
+[INTERIM] 225825.19 iops, 225.83 kiops, 57811249.06 Bps, 55.13 MBps
+[INTERIM] 227361.76 iops, 227.36 kiops, 58204611.29 Bps, 55.51 MBps
+[INTERIM] 226736.58 iops, 226.74 kiops, 58044563.63 Bps, 55.36 MBps
+[INTERIM] 228398.39 iops, 228.40 kiops, 58469987.47 Bps, 55.76 MBps
+[INTERIM] 225987.62 iops, 225.99 kiops, 57852831.13 Bps, 55.17 MBps
+[INTERIM] 229244.62 iops, 229.24 kiops, 58686621.96 Bps, 55.97 MBps
+[INTERIM] 227742.40 iops, 227.74 kiops, 58302055.38 Bps, 55.60 MBps
+[INTERIM] 227032.84 iops, 227.03 kiops, 58120407.72 Bps, 55.43 MBps
+[INTERIM] 229191.39 iops, 229.19 kiops, 58672996.68 Bps, 55.95 MBps
+[INTERIM] 227126.02 iops, 227.13 kiops, 58144260.96 Bps, 55.45 MBps
+[INTERIM] 228769.06 iops, 228.77 kiops, 58564880.43 Bps, 55.85 MBps
+[INTERIM] 226431.36 iops, 226.43 kiops, 57966427.36 Bps, 55.28 MBps
+[INTERIM] 225182.71 iops, 225.18 kiops, 57646772.97 Bps, 54.98 MBps
+[INTERIM] 229285.86 iops, 229.29 kiops, 58697180.52 Bps, 55.98 MBps
+[INTERIM] 226529.80 iops, 226.53 kiops, 57991628.82 Bps, 55.31 MBps
+[INTERIM] 227081.06 iops, 227.08 kiops, 58132752.59 Bps, 55.44 MBps
+[INTERIM] 230507.72 iops, 230.51 kiops, 59009975.99 Bps, 56.28 MBps
+[INTERIM] 229860.80 iops, 229.86 kiops, 58844363.74 Bps, 56.12 MBps
+[INTERIM] 229038.33 iops, 229.04 kiops, 58633811.25 Bps, 55.92 MBps
+[INTERIM] 227475.34 iops, 227.48 kiops, 58233687.70 Bps, 55.54 MBps
+[INTERIM] 224624.29 iops, 224.62 kiops, 57503818.58 Bps, 54.84 MBps
+close nvme b3:00.0
+[FINAL] qid 0 227455.75 iops, 227.46 kiops, 58228672.56 Bps, 55.53 MBps

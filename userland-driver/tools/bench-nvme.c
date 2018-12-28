@@ -229,7 +229,7 @@ void * bench_start(void *arg)
 	
 
 	for (n = 0; n < p.batch; n++) {
-		bufs[n] = unvme_alloc(ns, 2 * 1024 * 1024);
+		bufs[n] = unvme_alloc(ns, p.size);
 		/* XXX: always allocate 2MB hugepage in no-iommu vfio mode */
 	}
 
