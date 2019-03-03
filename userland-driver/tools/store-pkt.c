@@ -31,23 +31,13 @@ void hexdump(void *buf, int len)
 
 }
 
-
-int main(int argc, char **argv)
+void build_pkt(void *buf)
 {
-	int ret;
-	char buf[4096];
-	char *dst;
+	int len = 1024;
 	struct ether_header *eth;
 	struct ip *ip;
 	struct udphdr *udp;
-
-	int len = 1024;
-	__u64 slba = 1;
-	__u16 nblocks = 1;
-
-	const unvme_ns_t *unvme;
-
-
+	
 	eth = (struct ether_header *)buf;
 	eth->ether_shost[0] = 0x10;
 	eth->ether_shost[1] = 0x20;
@@ -84,6 +74,20 @@ int main(int argc, char **argv)
 	udp->uh_dport	= htons(60000);
 	udp->uh_sport	= htons(60000);
 	udp->uh_sum	= 0;
+}
+
+
+int main(int argc, char **argv)
+{
+	int ret;
+	char *dst;
+
+
+	__u64 slba = 1;
+	__u16 nblocks = 1;
+
+	const unvme_ns_t *unvme;
+
 
 	if (argc < 2) {
 		fprintf(stderr, "%s [NVMe PCI BUS]\n", argv[0]);
@@ -95,31 +99,35 @@ int main(int argc, char **argv)
 		return -1;
 	}
 	
-	dst = unvme_alloc(unvme, sizeof(buf));
+	dst = unvme_alloc_pram(unvme, 4096);
+	//dst = unvme_alloc(unvme, 4096);
 	if (!dst) {
 		fprintf(stderr, "failed to allocate memory from unvme\n");
 		unvme_close(unvme);
 		return -1;
 	}
+	printf("!!! dst is %p\n", dst);
 
-	memcpy(dst, buf, len);
+	//build_pkt(dst);
 	/* veriy the data */
 	printf("data to be written\n");
-	hexdump(dst, 128);
+	//hexdump(dst, 128);
 
-	ret = unvme_write(unvme, 0, dst, slba, nblocks);
+	ret = unvme_write(unvme, 1, dst, slba, nblocks);
 	if (ret < 0) {
 		fprintf(stderr, "failed to store packet\n");
 	}
 
 	unvme_free(unvme, dst);
 
-	char *r = unvme_alloc(unvme, 1024);
+	/*
+	char *r = unvme_alloc(unvme, 4096);
+	printf("verify: data written\n");
 	unvme_read(unvme, 0, r, slba, nblocks);
-	printf("verify: data writte\n");
 	hexdump(r, 128);
 
 	unvme_free(unvme, r);
+	*/
 	unvme_close(unvme);
 
 	return ret;

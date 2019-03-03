@@ -3,3 +3,5 @@ store-pkt
 load-and-xmit
 dump-nvme
 bench-nvme
+read-pkt
+xmit-from-pram
