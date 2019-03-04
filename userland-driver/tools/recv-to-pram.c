@@ -70,7 +70,7 @@ void hexdump(void *buf, int len)
 		if ((n + 1) % 32 == 0)
 			printf("\n");
 	}
-	printf("\n");
+	printf("\n\n");
 }
 
 
@@ -158,12 +158,30 @@ int main(int argc, char **argv) {
 			return 1;
 		}
 		printf("initialize p2pmem\n");
-		//memset(buf, 0, 67108864);
+		memset(buf, 0, 67108864);
 		paddr = phy_addr(buf);
 
 		/* fill the physical addresses on p2pmem to netmap slot */
 		init_nm_rx_ring_for_phy(buf, nm_desc);
-		*((char *)nmslot_to_buf(buf, 5, 0, 512)) = 0xaa;
+		*((char *)nmslot_to_buf(buf, 5, 0, 512)) = 0xaa; // test
+
+		/* XXX
+		 *
+		 * Flush the rx rings. netmap native drivers allocate
+		 * netmap krings and fill descriptor rings with the
+		 * packet buffers in the netmap krings. However, the
+		 * buffers exist on DRAM. Here makes cur and head go
+		 * around the ring. As a result, the physical
+		 * addresses in the ptr fields are going to be filled
+		 * in the descriptor rings.
+		 */
+		for (ri = nm_desc->first_rx_ring; ri < nm_desc->last_rx_ring; ri++) {
+			struct netmap_ring *ring = NETMAP_RXRING(nm_desc->nifp, ri);
+			ring->cur = ring->num_slots - 1;
+			ring->head = ring->num_slots - 1;
+			ioctl(nm_desc->fd, NIOCRXSYNC, NULL);
+		}
+
 	}
 
 	printf("netmap port: %s\n", nm_name);
