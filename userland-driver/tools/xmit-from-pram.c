@@ -141,6 +141,7 @@ int main(int argc, char **argv)
 {
 	int ch, n, ret, fd, pktlen = 512;
 	int no_write = 0;
+	int batch = 1;
 	char *buf;
 	uintptr_t paddr;
 	struct nm_desc *nm_desc;
@@ -148,7 +149,7 @@ int main(int argc, char **argv)
 
 	body.batch_size = 1;
 
-	while ((ch = getopt(argc, argv, "i:c:u:l:n")) != -1) {
+	while ((ch = getopt(argc, argv, "i:c:u:l:nb:")) != -1) {
 		switch (ch) {
 		case 'i':
 			body.nm_name = optarg;
@@ -162,6 +163,9 @@ int main(int argc, char **argv)
 		case 'n':
 			no_write = 1;
 			break;
+		case 'b':
+			batch = atoi(optarg);
+			break;
 		case 'l':
 			pktlen = atoi(optarg);
 			break;
@@ -174,6 +178,7 @@ int main(int argc, char **argv)
 	printf("netmap port: %s\n", body.nm_name);
 	printf("count:       %d\n", body.count);
 	printf("pktlen:      %d\n", pktlen);
+	printf("batch:       %d\n", batch);
 
 	/* open netmap */
 	nm_desc = nm_open(body.nm_name, NULL, 0, NULL);
@@ -206,7 +211,8 @@ int main(int argc, char **argv)
 		build_pkt(buf, pktlen);
 
 	/* xmit pakcet from nvme to nic */
-	for (n = 0; n < body.count; n++) {
+	int b = 0;
+	for (n = 0; n < body.count; n += b) {
 		unsigned int cur;
 		struct netmap_ring *txring;
 
@@ -216,13 +222,15 @@ int main(int argc, char **argv)
 			goto out;
 		}
 
-		cur = txring->cur;
-		txring->slot[cur].len = pktlen;
-		txring->slot[cur].ptr = paddr;
-		txring->slot[cur].flags |= NS_INDIRECT;
+		for (b = 0; b < batch; b++) {
+			cur = txring->cur;
+			txring->slot[cur].len = pktlen;
+			txring->slot[cur].ptr = paddr;
+			txring->slot[cur].flags |= NS_PHY_INDIRECT;
 
-		cur = nm_ring_next(txring, cur);
-		txring->head = txring->cur = cur;
+			cur = nm_ring_next(txring, cur);
+			txring->head = txring->cur = cur;
+		}
 
 		ret = ioctl(nm_desc->fd, NIOCTXSYNC, NULL);
 		if (ret < 0) {

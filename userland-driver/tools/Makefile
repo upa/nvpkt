@@ -5,7 +5,7 @@ LDLIBS	:= -lunvme -pthread
 CFLAGS	:= -g -Wall $(INCLUDE)
 
 PROGNAME = load-and-xmit store-pkt dump-nvme bench-nvme xmit-from-pram	\
-	   read-pkt
+	   read-pkt recv-to-pram
 
 all: $(PROGNAME)
 

@@ -3,11 +3,10 @@ store-pkt
 load-and-xmit
 dump-nvme
 bench-nvme
-<<<<<<< HEAD
 read-pkt
 xmit-from-pram
-=======
+recv-to-pram
 .DS_Store
 .*.swp
 dat/*.dat
->>>>>>> eaabfb77512c45a145e80e575ad11648c66ad91e
+all
